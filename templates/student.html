@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>訂書確認</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-6">
+    <div class="max-w-4xl mx-auto bg-white rounded shadow-lg p-6">
+        <div class="flex justify-between items-center border-b pb-4 mb-4">
+            <div>
+                <h1 class="text-2xl font-bold">嗨，{{ user.name }} ({{ user.sid }})</h1>
+                <p class="text-gray-500">學期: {{ sem.name }}</p>
+            </div>
+            <a href="/" class="text-blue-500 hover:underline">登出</a>
+        </div>
+
+        {% if record.is_locked %}
+            <div class="bg-green-50 border border-green-200 p-8 text-center rounded">
+                <h2 class="text-3xl font-bold text-green-700 mb-4">✅ 訂單已送出</h2>
+                <p class="text-xl mb-2">您的訂購項目：{{ record.items_summary }}</p>
+                <p class="text-4xl font-bold text-red-600 mb-6">應繳金額：${{ record.total_amount }}</p>
+                <div class="bg-white p-4 inline-block border rounded shadow-sm">
+                    <p class="text-gray-600">匯款資訊</p>
+                    <p class="font-mono text-xl">玉山銀行 (808) 1234-5678-9000</p>
+                    <p class="text-sm text-gray-500 mt-2">您填寫的後五碼: {{ record.bank_last_5 }}</p>
+                </div>
+                <p class="mt-6 text-gray-500">如需修改請聯繫班代解鎖。</p>
+            </div>
+
+        {% else %}
+            <form method="POST" onsubmit="return confirm('確定要送出嗎？送出後將無法修改！')">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {% for book in books %}
+                    <div class="border rounded p-4 flex items-start space-x-4 hover:bg-gray-50">
+                        <img src="{{ book.image_url }}" class="w-24 h-32 object-cover bg-gray-200" alt="書本封面">
+                        <div class="flex-1">
+                            <h3 class="font-bold text-lg">{{ book.title }}</h3>
+                            <p class="text-red-600 font-bold">${{ book.price }}</p>
+                            <label class="mt-2 flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" name="book_ids" value="{{ book.id }}" 
+                                       data-price="{{ book.price }}" 
+                                       onclick="calcTotal()"
+                                       class="w-5 h-5 text-blue-600">
+                                <span>我要買這本</span>
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="bg-gray-100 p-6 rounded-lg">
+                    <h3 class="text-xl font-bold mb-4">訂單確認</h3>
+                    <p class="text-3xl font-bold text-right mb-4">總金額: $<span id="totalDisplay">0</span></p>
+                    
+                    <div class="mb-4">
+                        <label class="block font-bold">輸入您的匯款帳號後五碼 (對帳用):</label>
+                        <input type="text" name="bank_code" required pattern="\d{5}" 
+                               class="border p-2 rounded w-48" placeholder="例如: 12345">
+                    </div>
+
+                    <div class="border-2 border-red-200 bg-red-50 p-4 rounded mb-6">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" required class="w-5 h-5 text-red-600">
+                            <span class="font-bold text-red-800">
+                                本人確認上述書單無誤。送出後系統鎖定，若因個人疏失導致買錯，願自行負擔費用。
+                            </span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded text-xl hover:bg-blue-700">
+                        確認送出並鎖定
+                    </button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+
+    <script>
+        function calcTotal() {
+            let total = 0;
+            document.querySelectorAll('input[name="book_ids"]:checked').forEach(el => {
+                total += parseInt(el.dataset.price);
+            });
+            document.getElementById('totalDisplay').innerText = total;
+        }
+    </script>
+</body>
+</html>
