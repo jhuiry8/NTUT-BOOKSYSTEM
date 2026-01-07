@@ -5,8 +5,10 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 # 設定密鑰 (正式上線建議改更複雜)
-app.secret_key = 'ntut_secret_key_123'
+app.secret_key = os.environ.get('SECRET_KEY', 'default_dev_key_do_not_use_in_prod')
 
+ADMIN_USER = os.environ.get('ADMIN_USER', 'admin')      # 預設 admin
+ADMIN_PASS = os.environ.get('ADMIN_PASSWORD', 'admin')  # 預設 admin (在本機測試時用)
 # --- 資料庫連線設定 ---
 # 如果在本地端跑，用 SQLite；如果在 Render 跑，用環境變數的 PostgreSQL URL
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///local_test.db')
@@ -69,19 +71,19 @@ with app.app_context():
         db.session.commit()
 
 # --- 路由 (Routes) ---
-
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         sid = request.form.get('sid')
         name = request.form.get('name')
         
-        # 1. 管理員後門
-        if sid == 'admin' and name == 'admin':
+        # --- 資安升級：比對環境變數 ---
+        # 這裡不再寫死 'admin'，而是比對 ADMIN_USER 和 ADMIN_PASS
+        if sid == ADMIN_USER and name == ADMIN_PASS:
             session['role'] = 'admin'
             return redirect(url_for('admin_dashboard'))
 
-        # 2. 學生登入驗證
+        # 學生登入邏輯不變
         user = Student.query.filter_by(sid=sid, name=name).first()
         if user:
             session['user_id'] = user.id
