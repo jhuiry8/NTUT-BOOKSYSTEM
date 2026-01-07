@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>北科大訂書系統 - 登入</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded shadow-md w-96">
+        <h2 class="text-2xl font-bold mb-6 text-center text-blue-800">教科書團購系統</h2>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="bg-red-100 text-red-700 p-2 mb-4 rounded">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="mb-4">
+                <label class="block text-gray-700">學號</label>
+                <input type="text" name="sid" class="w-full border p-2 rounded" placeholder="例如: 1125001" required>
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700">姓名</label>
+                <input type="text" name="name" class="w-full border p-2 rounded" placeholder="輸入全名" required>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">登入</button>
+        </form>
+        <p class="text-xs text-gray-400 mt-4 text-center">測試帳號: admin / admin</p>
+    </div>
+</body>
+</html>
