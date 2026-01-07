@@ -222,7 +222,40 @@ def unlock_student(record_id):
         rec.is_locked = False
         db.session.commit()
     return redirect(url_for('admin_dashboard', sem_id=rec.semester_id))
+這很正常，輸入資料難免會手誤。我們要新增一個「刪除學生」的功能。
 
+不過要注意資料庫的邏輯：如果有相關連的資料（例如他已經有訂單紀錄），通常要先刪除訂單，才能刪除學生，否則資料庫會報錯（Foreign Key Error）。
+
+以下是修改步驟：
+
+第一步：修改後端 app.py
+新增一個刪除學生的路由。我們會先檢查他有沒有訂單紀錄，有的話一併刪除。
+
+Python
+
+# --- 在 app.py 加入這段 ---
+
+@app.route('/admin/delete_student/<int:student_id>', methods=['POST'])
+def delete_student(student_id):
+    if session.get('role') != 'admin': return redirect(url_for('login'))
+    
+    # 1. 找到該學生 (使用資料庫的 primary key id，不是學號)
+    student = Student.query.get_or_404(student_id)
+    
+    try:
+        # 2. 為了避免資料庫報錯，要先刪除該學生的所有訂單紀錄
+        OrderRecord.query.filter_by(student_id=student.id).delete()
+        
+        # 3. 刪除學生本人
+        db.session.delete(student)
+        db.session.commit()
+        
+        flash(f"已刪除學生：{student.name} ({student.sid})")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"刪除失敗：{str(e)}")
+        
+    return redirect(url_for('admin_dashboard'))
 @app.route('/admin/book_detail/<int:book_id>')
 def book_detail(book_id):
     if session.get('role') != 'admin': return redirect(url_for('login'))
