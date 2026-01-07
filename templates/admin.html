@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>系統後台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">📚 後台管理系統</h1>
+            <a href="/" class="bg-gray-500 text-white px-4 py-2 rounded">登出</a>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow mb-6 flex justify-between items-center">
+            <form action="{{ url_for('admin_dashboard') }}" method="GET" class="flex items-center">
+                <label class="mr-2">檢視學期:</label>
+                <select name="sem_id" onchange="this.form.submit()" class="border p-2 rounded">
+                    {% for s in all_sems %}
+                    <option value="{{ s.id }}" {% if view_sem and s.id == view_sem.id %}selected{% endif %}>
+                        {{ s.name }} {% if s.is_active %}(進行中){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <form action="{{ url_for('new_semester') }}" method="POST" onsubmit="return confirm('確定開啟新學期？舊學期將被封存。')">
+                <input type="text" name="name" placeholder="新學期名稱 (如: 114-1)" class="border p-2 rounded" required>
+                <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">開啟新學期</button>
+            </form>
+        </div>
+
+        {% if view_sem %}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-1 bg-white p-4 rounded shadow">
+                <h2 class="font-bold text-lg mb-4 border-b pb-2">📖 {{ view_sem.name }} 書單管理</h2>
+                {% if view_sem.is_active %}
+                <form action="{{ url_for('add_book') }}" method="POST" class="mb-4 bg-gray-50 p-3 rounded">
+                    <input type="hidden" name="sem_id" value="{{ view_sem.id }}">
+                    <input type="text" name="title" placeholder="書名" class="w-full mb-2 border p-1" required>
+                    <input type="number" name="price" placeholder="價格" class="w-full mb-2 border p-1" required>
+                    <input type="text" name="image_url" placeholder="圖片連結 (URL)" class="w-full mb-2 border p-1">
+                    <button class="w-full bg-green-600 text-white py-1 rounded">新增書籍</button>
+                </form>
+                {% else %}
+                    <p class="text-red-500 mb-4">歷史學期無法新增書籍。</p>
+                {% endif %}
+
+                <ul class="space-y-2">
+                    {% for b in books %}
+                    <li class="flex justify-between border-b pb-1">
+                        <span>{{ b.title }}</span>
+                        <span class="font-bold">${{ b.price }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="lg:col-span-2 bg-white p-4 rounded shadow">
+                <div class="flex justify-between mb-4 border-b pb-2">
+                    <h2 class="font-bold text-lg">👥 學生訂購狀況</h2>
+                    <span class="text-xl font-bold text-blue-800">本學期總收金額: ${{ total_income }}</span>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="p-2">學號/姓名</th>
+                                <th class="p-2">購買內容</th>
+                                <th class="p-2">金額</th>
+                                <th class="p-2">後五碼</th>
+                                <th class="p-2">狀態</th>
+                                <th class="p-2">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in records %}
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-2">{{ r.student.sid }}<br>{{ r.student.name }}</td>
+                                <td class="p-2 text-gray-600 truncate max-w-xs">{{ r.items_summary }}</td>
+                                <td class="p-2 font-bold">${{ r.total_amount }}</td>
+                                <td class="p-2 font-mono">{{ r.bank_last_5 }}</td>
+                                <td class="p-2">
+                                    {% if r.is_locked %}
+                                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">已確認</span>
+                                    {% else %}
+                                        <span class="text-gray-400">選購中</span>
+                                    {% endif %}
+                                </td>
+                                <td class="p-2">
+                                    {% if r.is_locked and view_sem.is_active %}
+                                        <a href="{{ url_for('unlock_student', record_id=r.id) }}" 
+                                           class="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600">
+                                            解鎖重填
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+            <div class="text-center py-10 text-gray-500">目前沒有選擇學期。</div>
+        {% endif %}
+    </div>
+</body>
+</html>
