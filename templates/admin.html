@@ -45,7 +45,25 @@
                 {% else %}
                     <p class="text-red-500 mb-4">歷史學期無法新增書籍。</p>
                 {% endif %}
-
+<div class="lg:col-span-1 bg-white p-4 rounded shadow mt-6">
+    <h2 class="font-bold text-lg mb-4 border-b pb-2">➕ 新增學生名單</h2>
+    
+    <form action="{{ url_for('add_student') }}" method="POST" class="bg-blue-50 p-3 rounded">
+        <div class="mb-2">
+            <label class="block text-sm text-gray-600">學號</label>
+            <input type="text" name="sid" placeholder="例如: 1125003" class="w-full border p-1 rounded" required>
+        </div>
+        <div class="mb-2">
+            <label class="block text-sm text-gray-600">姓名</label>
+            <input type="text" name="name" placeholder="例如: 張三" class="w-full border p-1 rounded" required>
+        </div>
+        <button type="submit" class="w-full bg-blue-600 text-white py-1 rounded hover:bg-blue-700">新增學生</button>
+    </form>
+    
+    <div class="mt-4 text-xs text-gray-500">
+        <p>提示：如果是全班 50 人，建議直接請工程師(您)用資料庫匯入 CSV 最快。</p>
+    </div>
+</div>
                 <ul class="space-y-2">
                     {% for b in books %}
                     <li class="flex justify-between border-b pb-1">
