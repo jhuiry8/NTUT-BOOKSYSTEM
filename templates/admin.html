@@ -180,7 +180,14 @@
                                             🔓 解鎖
                                         </a>
                                     {% endif %}
-                                </td>
+                                
+                                <form action="{{ url_for('delete_student', student_id=item.info.id) }}" method="POST" 
+                  onsubmit="return confirm('⚠️ 警告：這將刪除該學生及其所有訂購紀錄！確定要刪除 {{ item.info.name }} 嗎？');">
+                <button type="submit" class="bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-600 hover:text-white transition" title="刪除學生">
+                    🗑️
+                </button>
+            </form>
+        </td>
                             </tr>
                             {% endfor %}
                         </tbody>
