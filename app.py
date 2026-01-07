@@ -143,7 +143,29 @@ def student_area():
         return redirect(url_for('student_area'))
 
     return render_template('student.html', user=user, sem=current_sem, books=books, record=record)
+# --- 在 app.py 中加入這段 ---
 
+@app.route('/admin/add_student', methods=['POST'])
+def add_student():
+    if session.get('role') != 'admin': return redirect(url_for('login'))
+    
+    sid = request.form.get('sid')
+    name = request.form.get('name')
+    
+    # 檢查學號是否重複
+    existing_student = Student.query.filter_by(sid=sid).first()
+    if existing_student:
+        flash(f"錯誤：學號 {sid} 已經存在！")
+        return redirect(url_for('admin_dashboard'))
+        
+    # 新增學生
+    new_student = Student(sid=sid, name=name)
+    db.session.add(new_student)
+    db.session.commit()
+    
+    flash(f"成功新增學生：{name} ({sid})")
+    return redirect(url_for('admin_dashboard'))
+    
 @app.route('/admin', methods=['GET', 'POST'])
 def admin_dashboard():
     if session.get('role') != 'admin': return redirect(url_for('login'))
