@@ -23,11 +23,6 @@ db = SQLAlchemy(app)
 
 # --- 2. 資料庫模型 (Database Models) ---
 
-class Semester(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), nullable=False)
-    is_active = db.Column(db.Boolean, default=False)
-
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sid = db.Column(db.String(20), unique=True, nullable=False)
