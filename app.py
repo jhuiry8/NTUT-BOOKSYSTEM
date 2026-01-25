@@ -1,8 +1,10 @@
 import os
 import csv
+import timedelta
 from io import StringIO, BytesIO
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -59,6 +61,12 @@ class OrderRecord(db.Model):
         if not self.items_summary: return []
         return self.items_summary.split(', ')
 
+class Semester(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    is_active = db.Column(db.Boolean, default=False)
+    # --- 新增期限欄位 ---
+    deadline = db.Column(db.DateTime, nullable=True)
 # 初始化
 with app.app_context():
     db.create_all()
@@ -99,10 +107,17 @@ def student_area():
     
     user = Student.query.get(session['user_id'])
     current_sem = Semester.query.filter_by(is_active=True).first()
-    
     if not current_sem: return "目前沒有開放訂書。"
 
-    # 取得或建立訂單紀錄
+    # --- 時區校正 (Render 是 UTC，我們手動 +8 變成台灣時間) ---
+    now_tw = datetime.utcnow() + timedelta(hours=8)
+    
+    # 檢查是否過期
+    is_expired = False
+    if current_sem.deadline and now_tw > current_sem.deadline:
+        is_expired = True
+
+    # 取得紀錄 (同原本邏輯)
     record = OrderRecord.query.filter_by(student_id=user.id, semester_id=current_sem.id).first()
     if not record:
         record = OrderRecord(student_id=user.id, semester_id=current_sem.id)
@@ -112,31 +127,25 @@ def student_area():
     books = Book.query.filter_by(semester_id=current_sem.id).all()
 
     if request.method == 'POST':
+        # --- 這裡加入過期攔截 ---
+        if is_expired:
+            flash("❌ 已經超過填寫期限，系統已鎖定！無法送出。")
+            return redirect(url_for('student_area'))
+
         if record.is_locked:
             flash("訂單已鎖定，無法修改。")
             return redirect(url_for('student_area'))
             
+        # ... (原本的儲存訂單邏輯) ...
         selected_ids = request.form.getlist('book_ids')
         bank_code = request.form.get('bank_code')
+        # ... (略: 計算金額、存入DB) ...
+        # ...
         
-        total = 0
-        titles = []
-        for bid in selected_ids:
-            book = Book.query.get(int(bid))
-            if book:
-                total += book.price
-                titles.append(book.title)
-        
-        record.items_summary = ", ".join(titles)
-        record.total_amount = total
-        record.bank_last_5 = bank_code
-        record.is_locked = True
-        db.session.commit()
         flash("訂購成功！")
         return redirect(url_for('student_area'))
 
-    return render_template('student.html', user=user, sem=current_sem, books=books, record=record)
-
+    return render_template('student.html', user=user, sem=current_sem, books=books, record=record, is_expired=is_expired)
 # --- 4. 後台管理路由 (Admin Routes) ---
 
 @app.route('/admin', methods=['GET', 'POST'])
@@ -153,7 +162,8 @@ def admin_dashboard():
 
     all_sems = Semester.query.order_by(Semester.id.desc()).all()
     books = Book.query.filter_by(semester_id=view_sem.id).all() if view_sem else []
-
+    now_tw = datetime.utcnow() + timedelta(hours=8)
+    
     # 準備學生列表與統計
     student_list = []
     book_stats = {b.title: 0 for b in books} # 初始化統計
@@ -176,7 +186,7 @@ def admin_dashboard():
     return render_template('admin.html', 
                            view_sem=view_sem, all_sems=all_sems, 
                            books=books, student_list=student_list, 
-                           total_income=total_income, book_stats=book_stats)
+                           total_income=total_income, book_stats=book_stats, now=now_tw)
 
 @app.route('/admin/add_book', methods=['POST'])
 def add_book():
@@ -288,7 +298,7 @@ def export_csv(sem_id):
     output.write(si.getvalue().encode('utf-8-sig'))
     output.seek(0)
     return send_file(output, mimetype='text/csv', as_attachment=True, download_name=f"report_{semester.name}.csv")
-
+# 設定新學期
 @app.route('/admin/new_semester', methods=['POST'])
 def new_semester():
     if session.get('role') != 'admin': return redirect(url_for('login'))
@@ -296,6 +306,22 @@ def new_semester():
     db.session.add(Semester(name=request.form.get('name'), is_active=True))
     db.session.commit()
     return redirect(url_for('admin_dashboard'))
-
+# 管理員設定期限 ---
+@app.route('/admin/set_deadline', methods=['POST'])
+def set_deadline():
+    if session.get('role') != 'admin': return redirect(url_for('login'))
+    
+    sem_id = request.form.get('sem_id')
+    deadline_str = request.form.get('deadline') # 格式: "2024-06-30T23:59"
+    
+    semester = Semester.query.get(sem_id)
+    if semester and deadline_str:
+        # 將字串轉為 datetime 物件
+        semester.deadline = datetime.strptime(deadline_str, '%Y-%m-%dT%H:%M')
+        db.session.commit()
+        flash(f"已設定期限：{deadline_str}")
+    
+    return redirect(url_for('admin_dashboard', sem_id=sem_id))
+    
 if __name__ == '__main__':
     app.run(debug=True)
