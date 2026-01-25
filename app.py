@@ -3,6 +3,7 @@ import csv
 from io import StringIO, BytesIO
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text  # <--- text 要從這裡引入
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -63,15 +64,31 @@ class Semester(db.Model):
     deadline = db.Column(db.DateTime, nullable=True)
 # 初始化
 with app.app_context():
+    # 1. 先嘗試建立所有表單 (針對新用戶)
     db.create_all()
-    # 預設建立一組測試資料
+    
+    # 2. 【這是救命藥丸】嘗試手動補上 deadline 欄位
+    # 如果資料庫已經有這個欄位，這段會報錯但被 except 抓接住，不會讓程式當機
+    try:
+        with db.engine.connect() as conn:
+            # 這是 PostgreSQL 的指令，用來加欄位
+            conn.execute(text("ALTER TABLE semester ADD COLUMN deadline TIMESTAMP;"))
+            conn.commit()
+            print("🎉 成功：已手動補上 deadline 欄位！")
+    except Exception as e:
+        # 如果欄位已經存在，就會進來這裡，我們印個訊息就好，不要讓程式掛掉
+        print("ℹ️ 提示：欄位可能已存在，跳過新增。")
+
+    # 3. 預設建立一組測試資料 (這段保留原本的)
     if not Student.query.first():
         db.session.add(Student(sid="112001", name="測試生"))
         db.session.commit()
+    
+    # 注意：這裡原本的建立學期也要保留，但因為欄位增加了，我們更新一下預設值
     if not Semester.query.first():
-        db.session.add(Semester(name="113-1 (預設)", is_active=True))
+        # 加上 deadline 的預設值
+        db.session.add(Semester(name="113-1 (預設)", is_active=True, deadline=None))
         db.session.commit()
-
 # --- 3. 路由邏輯 (Routes) ---
 
 @app.route('/', methods=['GET', 'POST'])
