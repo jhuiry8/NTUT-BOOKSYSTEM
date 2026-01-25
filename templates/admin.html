@@ -13,6 +13,7 @@
         </div>
 
         <div class="bg-white p-4 rounded shadow mb-6 flex flex-wrap justify-between items-center gap-4">
+            
             <form action="{{ url_for('admin_dashboard') }}" method="GET" class="flex items-center">
                 <label class="mr-2 font-bold text-gray-700">檢視學期:</label>
                 <select name="sem_id" onchange="this.form.submit()" class="border border-gray-300 p-2 rounded bg-gray-50 focus:ring-2 focus:ring-blue-500">
@@ -24,18 +25,39 @@
                 </select>
             </form>
 
+            {% if view_sem %}
+            <div class="bg-yellow-50 px-3 py-2 rounded border border-yellow-200 flex items-center gap-3">
+                <span class="font-bold text-yellow-800 text-sm">⏳ 截止期限：</span>
+                {% if view_sem.is_active %}
+                    <form action="{{ url_for('set_deadline') }}" method="POST" class="flex gap-2">
+                        <input type="hidden" name="sem_id" value="{{ view_sem.id }}">
+                        <input type="datetime-local" name="deadline" 
+                               value="{{ view_sem.deadline.strftime('%Y-%m-%dT%H:%M') if view_sem.deadline else '' }}"
+                               class="border border-yellow-300 p-1 rounded text-sm focus:outline-none focus:border-yellow-500" required>
+                        <button class="bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700 text-xs font-bold transition">
+                            設定
+                        </button>
+                    </form>
+                {% else %}
+                    <span class="text-gray-500 text-sm">
+                        {{ view_sem.deadline.strftime('%Y-%m-%d %H:%M') if view_sem.deadline else '未設定' }}
+                    </span>
+                {% endif %}
+            </div>
+            {% endif %}
+
             <div class="flex gap-2">
                 {% if view_sem %}
                 <a href="{{ url_for('export_csv', sem_id=view_sem.id) }}" 
-                   class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-bold flex items-center shadow">
-                   📥 匯出 Excel (CSV)
+                   class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-bold flex items-center shadow text-sm">
+                    📥 匯出 Excel
                 </a>
                 {% endif %}
                 
                 <form action="{{ url_for('new_semester') }}" method="POST" onsubmit="return confirm('確定開啟新學期？舊學期將被封存。')">
                     <div class="flex">
-                        <input type="text" name="name" placeholder="新學期名稱 (如: 114-1)" class="border border-gray-300 p-2 rounded-l w-48" required>
-                        <button class="bg-red-600 text-white px-4 py-2 rounded-r hover:bg-red-700 font-bold">開啟新學期</button>
+                        <input type="text" name="name" placeholder="新學期名稱" class="border border-gray-300 p-2 rounded-l w-32 text-sm" required>
+                        <button class="bg-red-600 text-white px-3 py-2 rounded-r hover:bg-red-700 font-bold text-sm">開啟新學期</button>
                     </div>
                 </form>
             </div>
@@ -57,7 +79,7 @@
                     <input type="text" name="title" placeholder="書名" class="w-full mb-2 border p-2 rounded text-sm" required>
                     <div class="flex gap-2 mb-2">
                         <input type="number" name="price" placeholder="價格" class="w-1/2 border p-2 rounded text-sm" required>
-                        <input type="text" name="image_url" placeholder="圖片網址(選填)" class="w-1/2 border p-2 rounded text-sm">
+                        <input type="text" name="image_url" placeholder="圖片網址(選填)" class="w-1/2 border p-2 rounded text-sm bg-white">
                     </div>
                     <button class="w-full bg-blue-600 text-white py-2 rounded text-sm hover:bg-blue-700 font-bold">新增</button>
                 </form>
@@ -67,8 +89,8 @@
                     {% for b in books %}
                     <li class="bg-gray-50 p-3 rounded border hover:shadow-md transition group relative">
                         <div class="flex justify-between items-start">
-                            <div class="flex-1 pr-8"> <a href="{{ url_for('book_detail', book_id=b.id) }}" 
-                                   class="text-blue-700 font-bold text-lg hover:underline block mb-1">
+                            <div class="flex-1 pr-8"> 
+                                <a href="{{ url_for('book_detail', book_id=b.id) }}" class="text-blue-700 font-bold text-lg hover:underline block mb-1">
                                     {{ b.title }}
                                 </a>
                                 <div class="flex justify-between items-center text-sm">
@@ -164,12 +186,25 @@
 
                                 <td class="p-3 border">
                                     {% if item.record and item.record.is_locked %}
-                                        <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold">已鎖定</span>
+                                        <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold">
+                                            已鎖定
+                                        </span>
+                                    
+                                    {% elif view_sem.deadline and now > view_sem.deadline %}
+                                        <span class="inline-block bg-red-600 text-white px-2 py-1 rounded text-xs font-bold animate-pulse">
+                                            ⚠️ 缺交 / 過期
+                                        </span>
+                                        <div class="text-[10px] text-red-500 mt-1 font-bold">(未送出訂單)</div>
+
                                     {% elif item.record %}
-                                        <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">選購中</span>
+                                        <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">
+                                            選購中
+                                        </span>
                                     {% else %}
                                         <span class="text-gray-400 text-xs">未登入</span>
                                     {% endif %}
+                                </td>
+
                                 <td class="p-3 border text-center">
                                     <div class="flex justify-center items-center gap-2">
                                         {% if item.record and item.record.is_locked and view_sem.is_active %}
