@@ -28,6 +28,8 @@ class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sid = db.Column(db.String(20), unique=True, nullable=False)
     name = db.Column(db.String(50), nullable=False)
+    email = db.Column(db.String(120), nullable=True)
+    english_name = db.Column(db.String(100), nullable=True)
 
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
