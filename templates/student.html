@@ -8,6 +8,7 @@
 <body class="bg-gray-50 min-h-screen p-6">
     <div class="max-w-4xl mx-auto bg-white rounded shadow-lg p-6">
         
+        <!-- 頂部標題與使用者資訊 -->
         <div class="flex justify-between items-center border-b pb-4 mb-4">
             <div class="flex items-center gap-4">
                 <img src="https://i.pinimg.com/736x/58/05/bf/5805bfb974c92449a1c9335ebe58f009.jpg" 
@@ -20,6 +21,46 @@
             <a href="/" class="text-blue-500 hover:underline">登出</a>
         </div>
 
+        <!-- 系統提示訊息 (Flash Messages) -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="mb-6">
+                    {% for message in messages %}
+                        <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded shadow-sm mb-2" role="alert">
+                            <p class="font-bold">{{ message }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- 新增：個人資料設定區塊 -->
+        <div class="mb-8 bg-gray-50 border rounded-lg p-5 shadow-sm">
+            <h2 class="text-lg font-bold mb-4 text-gray-800 border-b pb-2 flex items-center gap-2">
+                👤 個人聯絡資料
+            </h2>
+            <form action="/student/update_profile" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2 text-sm">英文名字 (English Name)</label>
+                    <input type="text" name="english_name" value="{{ user.english_name or '' }}" 
+                           placeholder="例如: John Doe" 
+                           class="border border-gray-300 rounded p-2 w-full focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2 text-sm">聯絡信箱 (Email)</label>
+                    <input type="email" name="email" value="{{ user.email or '' }}" 
+                           placeholder="example@ntut.edu.tw" 
+                           class="border border-gray-300 rounded p-2 w-full focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition">
+                </div>
+                <div class="md:col-span-2 flex justify-end mt-2">
+                    <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 px-6 rounded shadow transition active:scale-95 text-sm">
+                        儲存個人資料
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 期限提示區塊 -->
         {% if sem.deadline %}
             <div class="mb-6 text-center">
                 {% if is_expired %}
@@ -37,6 +78,7 @@
             </div>
         {% endif %}
 
+        <!-- 訂單狀態邏輯區塊 -->
         {% if is_expired and not record.is_locked %}
             <div class="text-center py-16 bg-gray-50 rounded border-2 border-dashed border-gray-300">
                 <div class="text-6xl mb-4">⏳</div>
