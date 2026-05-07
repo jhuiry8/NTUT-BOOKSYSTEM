@@ -78,7 +78,14 @@ with app.app_context():
     except Exception as e:
         # 如果欄位已經存在，就會進來這裡，我們印個訊息就好，不要讓程式掛掉
         print("ℹ️ 提示：欄位可能已存在，跳過新增。")
-
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(text("ALTER TABLE student ADD COLUMN email VARCHAR(120);"))
+            conn.execute(text("ALTER TABLE student ADD COLUMN english_name VARCHAR(100);"))
+            conn.commit()
+            print("🎉 成功：已手動補上 Student 的 Email 與英文名字欄位！")
+    except Exception as e:
+        print("ℹ️ 提示：Student 欄位可能已存在，跳過新增。")
     # 3. 預設建立一組測試資料 (這段保留原本的)
     if not Student.query.first():
         db.session.add(Student(sid="112001", name="測試生"))
@@ -272,6 +279,28 @@ def delete_book(book_id):
     flash(f"已刪除書籍：{book.title}")
     return redirect(url_for('admin_dashboard', sem_id=sem_id))
 
+# --- 學生更新個人資料 ---
+@app.route('/student/update_profile', methods=['POST'])
+def update_profile():
+    # 檢查權限
+    if session.get('role') != 'student': 
+        return redirect(url_for('login'))
+    
+    user = Student.query.get(session['user_id'])
+    if user:
+        # 讀取表單資料並更新
+        user.email = request.form.get('email')
+        user.english_name = request.form.get('english_name')
+        
+        try:
+            db.session.commit()
+            flash("✅ 個人資料更新成功！")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"❌ 更新失敗：{str(e)}")
+            
+    return redirect(url_for('student_area'))
+    
 @app.route('/admin/add_student', methods=['POST'])
 def add_student():
     if session.get('role') != 'admin': return redirect(url_for('login'))
@@ -338,14 +367,20 @@ def export_csv(sem_id):
     si = StringIO()
     si.write('\ufeff') # BOM for Excel
     writer = csv.writer(si)
-    writer.writerow(['學號', '姓名', '總金額', '匯款後五碼', '狀態', '購買書單'])
+    
+    # --- 修改 1：標題列加入「英文名字」與「Email」 ---
+    writer.writerow(['學號', '姓名', '英文名字', 'Email', '總金額', '匯款後五碼', '狀態', '購買書單'])
     
     for stu in all_students:
         rec = next((r for r in records if r.student_id == stu.id), None)
         status = "已鎖定" if (rec and rec.is_locked) else "未確認"
+        
+        # --- 修改 2：寫入資料時加入學生的英文名字與 Email ---
         writer.writerow([
             stu.sid, 
             stu.name, 
+            stu.english_name or "",  # 如果沒填會是 None，轉為空字串以免報錯
+            stu.email or "",         # 如果沒填會是 None，轉為空字串以免報錯
             rec.total_amount if rec else 0,
             rec.bank_last_5 if rec else "",
             status,
