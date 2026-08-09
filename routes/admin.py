@@ -82,14 +82,16 @@ def add_student():
         db.session.commit()
     return redirect(url_for('admin.admin_dashboard'))
 
-@admin_bp.route('/unlock/<int:record_id>')
+@admin_bp.route('/unlock/<int:record_id>', methods=['POST'])
 def unlock_student(record_id):
     if session.get('role') != 'admin': return redirect(url_for('auth.login'))
     rec = OrderRecord.query.get(record_id)
+    sem_id = None
     if rec:
         rec.is_locked = False
+        sem_id = rec.semester_id
         db.session.commit()
-    return redirect(url_for('admin.admin_dashboard', sem_id=rec.semester_id))
+    return redirect(url_for('admin.admin_dashboard', sem_id=sem_id))
 
 @admin_bp.route('/delete_student/<int:student_id>', methods=['POST'])
 def delete_student(student_id):
@@ -133,6 +135,7 @@ def export_csv(sem_id):
     if session.get('role') != 'admin': return redirect(url_for('auth.login'))
     semester = Semester.query.get_or_404(sem_id)
     records = OrderRecord.query.filter_by(semester_id=sem_id).all()
+    records_by_student = {r.student_id: r for r in records}
     all_students = Student.query.all()
     
     si = StringIO()
@@ -143,7 +146,7 @@ def export_csv(sem_id):
     writer.writerow(['學號', '姓名', '英文名字', 'Email', '總金額', '匯款後五碼', '狀態', '購買書單'])
     
     for stu in all_students:
-        rec = next((r for r in records if r.student_id == stu.id), None)
+        rec = records_by_student.get(stu.id)
         status = "已鎖定" if (rec and rec.is_locked) else "未確認"
         
         # --- 修改 2：寫入資料時加入學生的英文名字與 Email ---

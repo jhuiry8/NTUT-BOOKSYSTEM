@@ -225,11 +225,12 @@
                                 <td class="p-3 border text-center">
                                     <div class="flex justify-center items-center gap-2">
                                         {% if item.record and item.record.is_locked and view_sem.is_active %}
-                                            <a href="{{ url_for('admin.unlock_student', record_id=item.record.id) }}" 
-                                               onclick="return confirm('確定要解鎖嗎？')"
-                                               class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600 transition shadow">
-                                                🔓 解鎖
-                                            </a>
+                                            <form action="{{ url_for('admin.unlock_student', record_id=item.record.id) }}" method="POST"
+                                                  onsubmit="return confirm('確定要解鎖嗎？')">
+                                                <button type="submit" class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600 transition shadow">
+                                                    🔓 解鎖
+                                                </button>
+                                            </form>
                                         {% endif %}
 
                                         <form action="{{ url_for('admin.delete_student', student_id=item.info.id) }}" method="POST" 

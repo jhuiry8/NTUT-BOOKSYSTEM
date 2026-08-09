@@ -1,11 +1,13 @@
 import os
 from flask import Blueprint, request, redirect, url_for, flash, session, render_template
 from models import Student
+import secrets
 
 auth_bp = Blueprint('auth', __name__)
 
-ADMIN_USER = os.environ.get('ADMIN_USER', 'admin')
-ADMIN_PASS = os.environ.get('ADMIN_PASSWORD', 'admin')
+# 如果環境變數未設定，預設產生一組隨機亂碼，避免預設的 admin/admin 被嘗試登入 (Fail closed)
+ADMIN_USER = os.environ.get('ADMIN_USER') or secrets.token_hex(16)
+ADMIN_PASS = os.environ.get('ADMIN_PASSWORD') or secrets.token_hex(16)
 
 @auth_bp.route('/', methods=['GET', 'POST'])
 def login():

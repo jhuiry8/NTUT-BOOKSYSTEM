@@ -60,8 +60,8 @@ def student_area():
         bank_code = request.form.get('bank_code')
         
         print(f"[DEBUG] 勾選書本 ID: {selected_ids}")
-        print(f"[DEBUG] 匯款帳號輸入: {bank_code}")
-
+        print(f"[DEBUG] 勾選書本數量: {len(selected_ids)}")
+        print("[DEBUG] 匯款帳號輸入已收到 (已隱藏)")
         # D. 安全性處理：防止匯款帳號超過 5 碼導致資料庫崩潰
         if bank_code and len(bank_code) > 5:
             bank_code = bank_code[:5]
@@ -90,7 +90,7 @@ def student_area():
         except Exception as e:
             db.session.rollback() # 如果失敗就回滾
             print(f"[ERROR] 資料庫寫入失敗: {str(e)}")
-            flash(f"系統錯誤：資料儲存失敗 ({str(e)})")
+            flash("系統錯誤：資料儲存失敗，請稍後再試")
             return redirect(url_for('student.student_area'))
 
         return redirect(url_for('student.student_area'))
@@ -111,9 +111,12 @@ def update_profile():
     
     user = Student.query.get(session['user_id'])
     if user:
-        # 讀取表單資料並更新
-        user.email = request.form.get('email')
-        user.english_name = request.form.get('english_name')
+        # 讀取表單資料並更新 (截斷過長字串避免報錯)
+        email = request.form.get('email')
+        english_name = request.form.get('english_name')
+        
+        user.email = email[:120] if email else None
+        user.english_name = english_name[:100] if english_name else None
         
         try:
             db.session.commit()

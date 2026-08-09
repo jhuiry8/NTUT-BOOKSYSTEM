@@ -50,7 +50,7 @@ def create_app():
         # 嘗試手動補上 allow_profile_edit 欄位
         try:
             with db.engine.connect() as conn:
-                conn.execute(text("ALTER TABLE semester ADD COLUMN allow_profile_edit BOOLEAN DEFAULT 1;"))
+                conn.execute(text("ALTER TABLE semester ADD COLUMN allow_profile_edit BOOLEAN DEFAULT TRUE;"))
                 conn.commit()
                 print("Success: Added allow_profile_edit column")
         except Exception as e:
@@ -66,14 +66,15 @@ def create_app():
         except Exception as e:
             print("Info: Student columns might already exist, skipping.")
             
-        # 預設建立一組測試資料
-        if not Student.query.first():
-            db.session.add(Student(sid="112001", name="測試生"))
-            db.session.commit()
+        # 預設建立一組測試資料 (受環境變數保護)
+        if os.environ.get('SEED_DB', '').lower() == 'true':
+            if not Student.query.first():
+                db.session.add(Student(sid="112001", name="測試生"))
+                db.session.commit()
         
-        if not Semester.query.first():
-            db.session.add(Semester(name="113-1 (預設)", is_active=True, deadline=None))
-            db.session.commit()
+            if not Semester.query.first():
+                db.session.add(Semester(name="113-1 (預設)", is_active=True, deadline=None))
+                db.session.commit()
 
     return app
 
