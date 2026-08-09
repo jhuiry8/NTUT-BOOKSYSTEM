@@ -1,5 +1,6 @@
 import os
-from flask import Flask
+from urllib.parse import urlparse
+from flask import Flask, request, abort
 from sqlalchemy import text
 from dotenv import load_dotenv
 from extensions import db
@@ -20,6 +21,26 @@ def create_app():
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+    @app.before_request
+    def protect_admin_post_from_csrf():
+        if request.method != 'POST' or not request.path.startswith('/admin'):
+            return
+
+        host = request.host
+        origin = request.headers.get('Origin')
+        referer = request.headers.get('Referer')
+
+        def is_same_origin(url):
+            parsed = urlparse(url)
+            return parsed.scheme in ('http', 'https') and parsed.netloc == host
+
+        if origin and not is_same_origin(origin):
+            abort(403)
+        if not origin and referer and not is_same_origin(referer):
+            abort(403)
 
     # 初始化套件
     db.init_app(app)
