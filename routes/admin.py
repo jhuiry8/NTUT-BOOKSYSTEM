@@ -7,6 +7,12 @@ from models import Student, Semester, Book, OrderRecord
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+
+def csv_safe(value):
+    """Prevent spreadsheet programs from evaluating user-controlled formulas."""
+    value = str(value or '')
+    return "'" + value if value.startswith(('=', '+', '-', '@')) else value
+
 @admin_bp.route('/', methods=['GET', 'POST'])
 def admin_dashboard():
     if session.get('role') != 'admin': return redirect(url_for('auth.login'))
@@ -20,7 +26,7 @@ def admin_dashboard():
         if not view_sem: view_sem = Semester.query.first()
 
     all_sems = Semester.query.order_by(Semester.id.desc()).all()
-    books = Book.query.filter_by(semester_id=view_sem.id).all() if view_sem else []
+    books = Book.query.filter_by(semester_id=view_sem.id).order_by(Book.display_order.asc(), Book.id.asc()).all() if view_sem else []
     now_tw = datetime.utcnow() + timedelta(hours=8)
     
     # 準備學生列表與統計
@@ -28,7 +34,7 @@ def admin_dashboard():
     book_stats = {b.title: 0 for b in books} # 初始化統計
     
     if view_sem:
-        all_students = Student.query.all()
+        all_students = Student.query.order_by(Student.sid.asc()).all()
         for stu in all_students:
             rec = OrderRecord.query.filter_by(student_id=stu.id, semester_id=view_sem.id).first()
             student_list.append({'info': stu, 'record': rec})
@@ -55,11 +61,26 @@ def add_book():
         semester_id=sem_id,
         title=request.form.get('title'),
         price=int(request.form.get('price')),
-        image_url=request.form.get('image_url')
+        image_url=request.form.get('image_url'),
+        remark=request.form.get('remark'),
+        display_order=int(request.form.get('display_order', 0))
     )
     db.session.add(new_book)
     db.session.commit()
     return redirect(url_for('admin.admin_dashboard', sem_id=sem_id))
+
+@admin_bp.route('/update_book/<int:book_id>', methods=['POST'])
+def update_book(book_id):
+    if session.get('role') != 'admin': return redirect(url_for('auth.login'))
+    book = Book.query.get_or_404(book_id)
+    
+    book.price = int(request.form.get('price'))
+    book.remark = request.form.get('remark')
+    book.display_order = int(request.form.get('display_order', 0))
+    
+    db.session.commit()
+    flash(f"已更新書籍：{book.title}")
+    return redirect(url_for('admin.admin_dashboard', sem_id=book.semester_id))
 
 @admin_bp.route('/delete_book/<int:book_id>', methods=['POST'])
 def delete_book(book_id):
@@ -119,7 +140,7 @@ def delete_student(student_id):
 def book_detail(book_id):
     if session.get('role') != 'admin': return redirect(url_for('auth.login'))
     book = Book.query.get_or_404(book_id)
-    all_students = Student.query.all()
+    all_students = Student.query.order_by(Student.sid.asc()).all()
     bought, not_bought = [], []
     
     for stu in all_students:
@@ -136,7 +157,7 @@ def export_csv(sem_id):
     semester = Semester.query.get_or_404(sem_id)
     records = OrderRecord.query.filter_by(semester_id=sem_id).all()
     records_by_student = {r.student_id: r for r in records}
-    all_students = Student.query.all()
+    all_students = Student.query.order_by(Student.sid.asc()).all()
     
     si = StringIO()
     si.write('\ufeff') # BOM for Excel
@@ -151,14 +172,14 @@ def export_csv(sem_id):
         
         # --- 修改 2：寫入資料時加入學生的英文名字與 Email ---
         writer.writerow([
-            stu.sid, 
-            stu.name, 
-            stu.english_name or "",  # 如果沒填會是 None，轉為空字串以免報錯
-            stu.email or "",         # 如果沒填會是 None，轉為空字串以免報錯
+            csv_safe(stu.sid),
+            csv_safe(stu.name),
+            csv_safe(stu.english_name),
+            csv_safe(stu.email),
             rec.total_amount if rec else 0,
-            rec.bank_last_5 if rec else "",
+            csv_safe(rec.bank_last_5 if rec else ""),
             status,
-            rec.items_summary if rec else ""
+            csv_safe(rec.items_summary if rec else "")
         ])
         
     output = BytesIO()

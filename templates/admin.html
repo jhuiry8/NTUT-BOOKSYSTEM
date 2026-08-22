@@ -30,6 +30,7 @@
                 <span class="font-bold text-yellow-800 text-sm">⏳ 截止期限：</span>
                 {% if view_sem.is_active %}
                     <form action="{{ url_for('admin.set_deadline') }}" method="POST" class="flex gap-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="sem_id" value="{{ view_sem.id }}">
                         <input type="datetime-local" name="deadline" 
                                value="{{ view_sem.deadline.strftime('%Y-%m-%dT%H:%M') if view_sem.deadline else '' }}"
@@ -46,6 +47,7 @@
             </div>
             
             <form action="{{ url_for('admin.toggle_profile_edit', sem_id=view_sem.id) }}" method="POST" class="ml-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="px-3 py-2 rounded text-sm font-bold shadow-sm transition border {{ 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' if view_sem.allow_profile_edit else 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200' }}">
                     {{ '✅ 已開放個資填寫' if view_sem.allow_profile_edit else '🚫 已關閉個資填寫' }}
                 </button>
@@ -61,6 +63,7 @@
                 {% endif %}
                 
                 <form action="{{ url_for('admin.new_semester') }}" method="POST" onsubmit="return confirm('確定開啟新學期？舊學期將被封存。')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="flex">
                         <input type="text" name="name" placeholder="新學期名稱" class="border border-gray-300 p-2 rounded-l w-32 text-sm" required>
                         <button class="bg-red-600 text-white px-3 py-2 rounded-r hover:bg-red-700 font-bold text-sm">開啟新學期</button>
@@ -68,6 +71,7 @@
                 </form>
                 {% if view_sem %}
                 <form action="{{ url_for('admin.delete_semester', sem_id=view_sem.id) }}" method="POST" onsubmit="return confirm('⚠️ 危險操作！確定要刪除整個學期及其所有訂單與書籍資料嗎？此操作無法復原。')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="bg-gray-800 text-white px-3 py-2 rounded hover:bg-gray-900 font-bold text-sm shadow transition">🗑️ 刪除目前學期</button>
                 </form>
                 {% endif %}
@@ -85,12 +89,17 @@
                 
                 {% if view_sem.is_active %}
                 <form action="{{ url_for('admin.add_book') }}" method="POST" class="mb-6 bg-blue-50 p-4 rounded border border-blue-100">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="sem_id" value="{{ view_sem.id }}">
                     <h3 class="font-bold text-sm text-blue-800 mb-2">➕ 新增書籍</h3>
                     <input type="text" name="title" placeholder="書名" class="w-full mb-2 border p-2 rounded text-sm" required>
                     <div class="flex gap-2 mb-2">
                         <input type="number" name="price" placeholder="價格" class="w-1/2 border p-2 rounded text-sm" required>
                         <input type="text" name="image_url" placeholder="圖片網址(選填)" class="w-1/2 border p-2 rounded text-sm bg-white">
+                    </div>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" name="remark" placeholder="備註(選填)" class="w-2/3 border p-2 rounded text-sm">
+                        <input type="number" name="display_order" placeholder="順序(預設0)" class="w-1/3 border p-2 rounded text-sm">
                     </div>
                     <button class="w-full bg-blue-600 text-white py-2 rounded text-sm hover:bg-blue-700 font-bold">新增</button>
                 </form>
@@ -99,12 +108,18 @@
                 <ul class="space-y-4">
                     {% for b in books %}
                     <li class="bg-gray-50 p-3 rounded border hover:shadow-md transition group relative">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1 pr-8"> 
-                                <a href="{{ url_for('admin.book_detail', book_id=b.id) }}" class="text-blue-700 font-bold text-lg hover:underline block mb-1">
-                                    {{ b.title }}
-                                </a>
-                                <div class="flex justify-between items-center text-sm">
+                        <div class="flex flex-col justify-between items-start gap-2">
+                            <div class="flex-1 pr-8 w-full"> 
+                                <div class="flex justify-between items-start w-full">
+                                    <a href="{{ url_for('admin.book_detail', book_id=b.id) }}" class="text-blue-700 font-bold text-lg hover:underline block mb-1">
+                                        {{ b.title }}
+                                    </a>
+                                    <span class="text-xs text-gray-500 font-mono">順序: {{ b.display_order }}</span>
+                                </div>
+                                {% if b.remark %}
+                                <div class="text-xs text-gray-500 mb-2">{{ b.remark }}</div>
+                                {% endif %}
+                                <div class="flex justify-between items-center text-sm mt-1">
                                     <span class="text-red-600 font-bold">${{ b.price }}</span>
                                     <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-bold">
                                         {{ book_stats[b.title] }} 人購買
@@ -113,9 +128,30 @@
                             </div>
 
                             {% if view_sem.is_active %}
+                            <details class="w-full group mt-2 border-t pt-2 cursor-pointer">
+                                <summary class="text-xs text-blue-600 list-none text-right hover:underline font-bold">編輯此書籍</summary>
+                                <form action="{{ url_for('admin.update_book', book_id=b.id) }}" method="POST" class="mt-2 bg-white p-3 rounded border text-sm">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <div class="mb-2">
+                                        <label class="block text-gray-600 text-xs font-bold mb-1">價格</label>
+                                        <input type="number" name="price" value="{{ b.price }}" class="w-full border p-1 rounded" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="block text-gray-600 text-xs font-bold mb-1">備註</label>
+                                        <input type="text" name="remark" value="{{ b.remark or '' }}" class="w-full border p-1 rounded">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="block text-gray-600 text-xs font-bold mb-1">順序 (小到大)</label>
+                                        <input type="number" name="display_order" value="{{ b.display_order }}" class="w-full border p-1 rounded">
+                                    </div>
+                                    <button type="submit" class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 font-bold w-full">儲存修改</button>
+                                </form>
+                            </details>
+                            
                             <form action="{{ url_for('admin.delete_book', book_id=b.id) }}" method="POST" 
                                   onsubmit="return confirm('確定要刪除《{{ b.title }}》嗎？這會影響統計資料！');"
                                   class="absolute top-2 right-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="text-gray-400 hover:text-red-600 p-1" title="刪除書籍">
                                     🗑️
                                 </button>
@@ -129,6 +165,7 @@
                 <div class="mt-8 pt-4 border-t">
                     <h3 class="font-bold text-sm text-gray-600 mb-2">➕ 補登學生名單</h3>
                     <form action="{{ url_for('admin.add_student') }}" method="POST" class="flex gap-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="text" name="sid" placeholder="學號" class="border p-2 rounded text-sm w-1/3" required>
                         <input type="text" name="name" placeholder="姓名" class="border p-2 rounded text-sm w-1/3" required>
                         <button class="bg-gray-600 text-white px-2 rounded text-sm w-1/3 hover:bg-gray-700">新增</button>
@@ -227,6 +264,7 @@
                                         {% if item.record and item.record.is_locked and view_sem.is_active %}
                                             <form action="{{ url_for('admin.unlock_student', record_id=item.record.id) }}" method="POST"
                                                   onsubmit="return confirm('確定要解鎖嗎？')">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600 transition shadow">
                                                     🔓 解鎖
                                                 </button>
@@ -235,6 +273,7 @@
 
                                         <form action="{{ url_for('admin.delete_student', student_id=item.info.id) }}" method="POST" 
                                               onsubmit="return confirm('⚠️ 警告：這將刪除該學生及其所有訂購紀錄！確定要刪除 {{ item.info.name }} 嗎？');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-600 hover:text-white transition" title="刪除學生">
                                                 🗑️
                                             </button>

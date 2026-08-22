@@ -57,10 +57,10 @@ ADMIN_PASSWORD=自訂管理員密碼
    ```bash
    python -m venv venv
    # macOS / Linux
-   source venv/bin/activate  
+   source venv/bin/activate
    # Windows
    venv\Scripts\activate
-   
+
    pip install -r requirements.txt
    ```
 
@@ -81,6 +81,21 @@ ADMIN_PASSWORD=自訂管理員密碼
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `gunicorn app:app` (或是依賴 Render 預設的 Python Web App 設定)
 5. 部署完成後，系統會自動在第一次啟動時建立好資料庫。接著您就可以使用管理員帳號登入後台，開始「建立要販賣的書名與價格等資訊」了！
+
+## ✅ 自動測試與資料安全
+
+GitHub Actions 會在推送至 `main`／`master`，以及對這些分支建立 Pull Request 時執行：
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pytest -q
+```
+
+測試使用記憶體內的臨時 SQLite，完全不連線或修改正式資料庫。只要測試失敗，CI 就會顯示紅燈。建議在 GitHub 分支保護規則中把 `build-and-test` 設成必要檢查。
+
+資料庫啟動升級只會新增缺少的欄位，不會刪除或重建既有資料表。正式資料仍應另外使用託管平台提供的定期備份功能。
+
+正式部署必須固定設定長且隨機的 `SECRET_KEY`；系統在缺少此設定時會拒絕啟動。
 
 ## 🤝 貢獻 (Contributing)
 

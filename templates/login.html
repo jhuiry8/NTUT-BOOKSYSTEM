@@ -15,6 +15,7 @@
         {% endwith %}
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-4">
                 <label class="block text-gray-700">學號</label>
                 <input type="text" name="sid" class="w-full border p-2 rounded" placeholder="例如: 1122B0001" required>
