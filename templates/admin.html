@@ -92,6 +92,10 @@
                         <input type="number" name="price" placeholder="價格" class="w-1/2 border p-2 rounded text-sm" required>
                         <input type="text" name="image_url" placeholder="圖片網址(選填)" class="w-1/2 border p-2 rounded text-sm bg-white">
                     </div>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" name="remark" placeholder="備註(選填)" class="w-2/3 border p-2 rounded text-sm">
+                        <input type="number" name="display_order" placeholder="順序(預設0)" class="w-1/3 border p-2 rounded text-sm">
+                    </div>
                     <button class="w-full bg-blue-600 text-white py-2 rounded text-sm hover:bg-blue-700 font-bold">新增</button>
                 </form>
                 {% endif %}
@@ -99,12 +103,18 @@
                 <ul class="space-y-4">
                     {% for b in books %}
                     <li class="bg-gray-50 p-3 rounded border hover:shadow-md transition group relative">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1 pr-8"> 
-                                <a href="{{ url_for('admin.book_detail', book_id=b.id) }}" class="text-blue-700 font-bold text-lg hover:underline block mb-1">
-                                    {{ b.title }}
-                                </a>
-                                <div class="flex justify-between items-center text-sm">
+                        <div class="flex flex-col justify-between items-start gap-2">
+                            <div class="flex-1 pr-8 w-full"> 
+                                <div class="flex justify-between items-start w-full">
+                                    <a href="{{ url_for('admin.book_detail', book_id=b.id) }}" class="text-blue-700 font-bold text-lg hover:underline block mb-1">
+                                        {{ b.title }}
+                                    </a>
+                                    <span class="text-xs text-gray-500 font-mono">順序: {{ b.display_order }}</span>
+                                </div>
+                                {% if b.remark %}
+                                <div class="text-xs text-gray-500 mb-2">{{ b.remark }}</div>
+                                {% endif %}
+                                <div class="flex justify-between items-center text-sm mt-1">
                                     <span class="text-red-600 font-bold">${{ b.price }}</span>
                                     <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-bold">
                                         {{ book_stats[b.title] }} 人購買
@@ -113,6 +123,25 @@
                             </div>
 
                             {% if view_sem.is_active %}
+                            <details class="w-full group mt-2 border-t pt-2 cursor-pointer">
+                                <summary class="text-xs text-blue-600 list-none text-right hover:underline font-bold">編輯此書籍</summary>
+                                <form action="{{ url_for('admin.update_book', book_id=b.id) }}" method="POST" class="mt-2 bg-white p-3 rounded border text-sm">
+                                    <div class="mb-2">
+                                        <label class="block text-gray-600 text-xs font-bold mb-1">價格</label>
+                                        <input type="number" name="price" value="{{ b.price }}" class="w-full border p-1 rounded" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="block text-gray-600 text-xs font-bold mb-1">備註</label>
+                                        <input type="text" name="remark" value="{{ b.remark or '' }}" class="w-full border p-1 rounded">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="block text-gray-600 text-xs font-bold mb-1">順序 (小到大)</label>
+                                        <input type="number" name="display_order" value="{{ b.display_order }}" class="w-full border p-1 rounded">
+                                    </div>
+                                    <button type="submit" class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 font-bold w-full">儲存修改</button>
+                                </form>
+                            </details>
+                            
                             <form action="{{ url_for('admin.delete_book', book_id=b.id) }}" method="POST" 
                                   onsubmit="return confirm('確定要刪除《{{ b.title }}》嗎？這會影響統計資料！');"
                                   class="absolute top-2 right-2">

@@ -104,9 +104,24 @@
                         <p class="font-mono text-xl font-bold text-blue-800">中華郵政 (700) 0041029 0669262</p>
                         <p class="text-gray-600">戶名：彭勃清</p>
                         <hr class="my-2">
-                        <p class="text-sm text-gray-500">您填寫的後五碼: <span class="font-mono text-lg text-black">{{ record.bank_last_5 }}</span></p>
+                        <div class="mt-4">
+                            <form action="{{ url_for('student.update_bank_code') }}" method="POST" class="bg-gray-50 p-3 rounded border">
+                                <label class="block text-sm text-gray-700 font-bold mb-1">
+                                    您填寫的後五碼 (可隨時更新):
+                                </label>
+                                <div class="flex gap-2">
+                                    <input type="text" name="bank_code" value="{{ record.bank_last_5 or '' }}" 
+                                           pattern="\d{5}" maxlength="5" placeholder="例如: 12345"
+                                           class="border p-2 rounded text-lg font-mono w-32 focus:border-blue-500 focus:outline-none">
+                                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 transition shadow text-sm">
+                                        更新
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">若使用無摺存款請填 00000</p>
+                            </form>
+                        </div>
                     </div>
-                    <p class="mt-6 text-gray-500">如需修改請聯繫 PIG 解鎖。</p>
+                    <p class="mt-6 text-gray-500">如需修改訂購清單請聯繫 PIG 解鎖。</p>
                 </div>
 
             {% else %}
@@ -120,6 +135,9 @@
                             
                             <div class="flex-1">
                                 <h3 class="font-bold text-lg text-gray-800">{{ book.title }}</h3>
+                                {% if book.remark %}
+                                <p class="text-sm text-gray-600 mb-1">{{ book.remark }}</p>
+                                {% endif %}
                                 <p class="text-red-600 font-bold text-xl mb-2">${{ book.price }}</p>
                                 <label class="flex items-center space-x-2 cursor-pointer bg-blue-50 p-2 rounded hover:bg-blue-100 transition">
                                     <input type="checkbox" name="book_ids" value="{{ book.id }}" 
@@ -139,11 +157,11 @@
                         
                         <div class="mb-6">
                             <label class="block font-bold mb-2 text-gray-700">
-                                請輸入匯款帳號後五碼 <span class="text-sm font-normal text-gray-500">(若使用無摺存款請填 00000)</span>:
+                                匯款帳號後五碼 <span class="text-sm font-normal text-blue-600">(可先不填，匯款後再來補填)</span>:
                             </label>
-                            <input type="text" name="bank_code" required pattern="\d{5}" maxlength="5"
+                            <input type="text" name="bank_code" pattern="\d{5}" maxlength="5"
                                    class="border-2 border-gray-300 p-3 rounded w-full md:w-64 text-lg focus:border-blue-500 focus:outline-none" 
-                                   placeholder="例如: 12345">
+                                   placeholder="例如: 12345 (若無摺請填 00000)">
                         </div>
 
                         <div class="border-2 border-red-200 bg-red-50 p-4 rounded mb-6">

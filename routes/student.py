@@ -37,7 +37,7 @@ def student_area():
         db.session.add(record)
         db.session.commit()
 
-    books = Book.query.filter_by(semester_id=current_sem.id).all()
+    books = Book.query.filter_by(semester_id=current_sem.id).order_by(Book.display_order.asc(), Book.id.asc()).all()
 
     # --- 處理表單提交 (POST) ---
     if request.method == 'POST':
@@ -125,4 +125,34 @@ def update_profile():
             db.session.rollback()
             flash(f"❌ 更新失敗：{str(e)}")
             
+    return redirect(url_for('student.student_area'))
+
+@student_bp.route('/update_bank_code', methods=['POST'])
+def update_bank_code():
+    if session.get('role') != 'student': 
+        return redirect(url_for('auth.login'))
+    
+    current_sem = Semester.query.filter_by(is_active=True).first()
+    if not current_sem: return redirect(url_for('student.student_area'))
+    
+    now_tw = datetime.utcnow() + timedelta(hours=8)
+    if current_sem.deadline and now_tw > current_sem.deadline:
+        flash("❌ 已經超過填寫期限，無法修改匯款帳號！")
+        return redirect(url_for('student.student_area'))
+        
+    user = Student.query.get(session['user_id'])
+    record = OrderRecord.query.filter_by(student_id=user.id, semester_id=current_sem.id).first()
+    
+    if record and record.is_locked:
+        bank_code = request.form.get('bank_code')
+        if bank_code and len(bank_code) > 5:
+            bank_code = bank_code[:5]
+        record.bank_last_5 = bank_code
+        try:
+            db.session.commit()
+            flash("✅ 匯款帳號更新成功！")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"❌ 更新失敗：{str(e)}")
+        
     return redirect(url_for('student.student_area'))

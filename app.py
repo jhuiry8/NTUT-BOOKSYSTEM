@@ -66,6 +66,16 @@ def create_app():
         except Exception as e:
             print("Info: Student columns might already exist, skipping.")
             
+        # 嘗試手動補上 Book 新欄位
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE book ADD COLUMN remark TEXT;"))
+                conn.execute(text("ALTER TABLE book ADD COLUMN display_order INTEGER DEFAULT 0;"))
+                conn.commit()
+                print("Success: Added remark and display_order to Book")
+        except Exception as e:
+            print("Info: Book columns might already exist, skipping.")
+            
         # 預設建立一組測試資料 (受環境變數保護)
         if os.environ.get('SEED_DB', '').lower() == 'true':
             if not Student.query.first():

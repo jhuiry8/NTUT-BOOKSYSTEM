@@ -13,6 +13,8 @@ class Book(db.Model):
     title = db.Column(db.String(100), nullable=False)
     price = db.Column(db.Integer, nullable=False)
     image_url = db.Column(db.String(500))
+    remark = db.Column(db.Text, nullable=True)
+    display_order = db.Column(db.Integer, default=0)
 
 class OrderRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
