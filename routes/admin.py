@@ -7,6 +7,12 @@ from models import Student, Semester, Book, OrderRecord
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+
+def csv_safe(value):
+    """Prevent spreadsheet programs from evaluating user-controlled formulas."""
+    value = str(value or '')
+    return "'" + value if value.startswith(('=', '+', '-', '@')) else value
+
 @admin_bp.route('/', methods=['GET', 'POST'])
 def admin_dashboard():
     if session.get('role') != 'admin': return redirect(url_for('auth.login'))
@@ -166,14 +172,14 @@ def export_csv(sem_id):
         
         # --- 修改 2：寫入資料時加入學生的英文名字與 Email ---
         writer.writerow([
-            stu.sid, 
-            stu.name, 
-            stu.english_name or "",  # 如果沒填會是 None，轉為空字串以免報錯
-            stu.email or "",         # 如果沒填會是 None，轉為空字串以免報錯
+            csv_safe(stu.sid),
+            csv_safe(stu.name),
+            csv_safe(stu.english_name),
+            csv_safe(stu.email),
             rec.total_amount if rec else 0,
-            rec.bank_last_5 if rec else "",
+            csv_safe(rec.bank_last_5 if rec else ""),
             status,
-            rec.items_summary if rec else ""
+            csv_safe(rec.items_summary if rec else "")
         ])
         
     output = BytesIO()

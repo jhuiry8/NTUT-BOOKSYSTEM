@@ -41,6 +41,7 @@
                 👤 個人聯絡資料
             </h2>
             <form action="{{ url_for('student.update_profile') }}" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
                     <label class="block text-gray-700 font-bold mb-2 text-sm">英文名字 (English Name)</label>
                     <input type="text" name="english_name" value="{{ user.english_name or '' }}" 
@@ -106,6 +107,7 @@
                         <hr class="my-2">
                         <div class="mt-4">
                             <form action="{{ url_for('student.update_bank_code') }}" method="POST" class="bg-gray-50 p-3 rounded border">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <label class="block text-sm text-gray-700 font-bold mb-1">
                                     您填寫的後五碼 (可隨時更新):
                                 </label>
@@ -126,6 +128,7 @@
 
             {% else %}
                 <form method="POST" onsubmit="return confirm('確定要送出嗎？送出後將無法修改！')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                         {% for book in books %}

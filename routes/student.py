@@ -70,11 +70,23 @@ def student_area():
         # E. 計算金額與摘要
         total = 0
         titles = []
-        for bid in selected_ids:
-            book = Book.query.get(int(bid))
-            if book:
-                total += book.price
-                titles.append(book.title)
+        try:
+            requested_ids = {int(book_id) for book_id in selected_ids}
+        except ValueError:
+            flash("書籍資料格式錯誤，請重新選擇。")
+            return redirect(url_for('student.student_area'))
+
+        selected_books = Book.query.filter(
+            Book.id.in_(requested_ids),
+            Book.semester_id == current_sem.id,
+        ).all() if requested_ids else []
+        if len(selected_books) != len(requested_ids):
+            flash("書單包含無效或非本學期書籍，訂單未儲存。")
+            return redirect(url_for('student.student_area'))
+
+        for book in selected_books:
+            total += book.price
+            titles.append(book.title)
         
         # F. 更新資料庫物件
         try:

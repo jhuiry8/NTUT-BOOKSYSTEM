@@ -1,18 +1,33 @@
 import os
 from flask import Flask
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from dotenv import load_dotenv
-from extensions import db
+from extensions import csrf, db
 from models import Student, Semester
 
 # 載入 .env 檔案
 load_dotenv()
 
-def create_app():
+def _add_missing_columns(engine, table_name, columns):
+    """Add legacy columns one at a time without touching existing data."""
+    existing = {column['name'] for column in inspect(engine).get_columns(table_name)}
+    for column_name, definition in columns.items():
+        if column_name in existing:
+            continue
+        with engine.begin() as connection:
+            connection.execute(text(
+                f'ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}'
+            ))
+
+
+def create_app(test_config=None):
     app = Flask(__name__)
 
     # --- 1. 設定與資安 (Environment Config) ---
-    app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key_123')
+    secret_key = os.environ.get('SECRET_KEY')
+    if not secret_key:
+        raise RuntimeError('SECRET_KEY must be set before the application starts')
+    app.secret_key = secret_key
 
     # 資料庫連線 (自動適應 Render 或 本機)
     db_url = os.environ.get('DATABASE_URL', 'sqlite:///local.db')
@@ -20,9 +35,12 @@ def create_app():
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    if test_config:
+        app.config.update(test_config)
 
     # 初始化套件
     db.init_app(app)
+    csrf.init_app(app)
 
     # 註冊 Blueprints
     from routes.auth import auth_bp
@@ -38,43 +56,19 @@ def create_app():
         # 先嘗試建立所有表單 (針對新用戶)
         db.create_all()
         
-        # 嘗試手動補上 deadline 欄位
-        try:
-            with db.engine.connect() as conn:
-                conn.execute(text("ALTER TABLE semester ADD COLUMN deadline TIMESTAMP;"))
-                conn.commit()
-                print("Success: Added deadline column")
-        except Exception as e:
-            print("Info: Column deadline might already exist, skipping.")
-            
-        # 嘗試手動補上 allow_profile_edit 欄位
-        try:
-            with db.engine.connect() as conn:
-                conn.execute(text("ALTER TABLE semester ADD COLUMN allow_profile_edit BOOLEAN DEFAULT TRUE;"))
-                conn.commit()
-                print("Success: Added allow_profile_edit column")
-        except Exception as e:
-            print("Info: Column allow_profile_edit might already exist, skipping.")
-            
-        # 嘗試手動補上 Student 新欄位
-        try:
-            with db.engine.connect() as conn:
-                conn.execute(text("ALTER TABLE student ADD COLUMN email VARCHAR(120);"))
-                conn.execute(text("ALTER TABLE student ADD COLUMN english_name VARCHAR(100);"))
-                conn.commit()
-                print("Success: Added Email and english_name to Student")
-        except Exception as e:
-            print("Info: Student columns might already exist, skipping.")
-            
-        # 嘗試手動補上 Book 新欄位
-        try:
-            with db.engine.connect() as conn:
-                conn.execute(text("ALTER TABLE book ADD COLUMN remark TEXT;"))
-                conn.execute(text("ALTER TABLE book ADD COLUMN display_order INTEGER DEFAULT 0;"))
-                conn.commit()
-                print("Success: Added remark and display_order to Book")
-        except Exception as e:
-            print("Info: Book columns might already exist, skipping.")
+        # 舊資料庫安全升級：只補缺少的欄位，不刪除或重建資料表。
+        _add_missing_columns(db.engine, 'semester', {
+            'deadline': 'TIMESTAMP',
+            'allow_profile_edit': 'BOOLEAN DEFAULT TRUE',
+        })
+        _add_missing_columns(db.engine, 'student', {
+            'email': 'VARCHAR(120)',
+            'english_name': 'VARCHAR(100)',
+        })
+        _add_missing_columns(db.engine, 'book', {
+            'remark': 'TEXT',
+            'display_order': 'INTEGER DEFAULT 0',
+        })
             
         # 預設建立一組測試資料 (受環境變數保護)
         if os.environ.get('SEED_DB', '').lower() == 'true':
