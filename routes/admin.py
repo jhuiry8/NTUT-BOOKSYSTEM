@@ -63,7 +63,7 @@ def add_book():
         price=int(request.form.get('price')),
         image_url=request.form.get('image_url'),
         remark=request.form.get('remark'),
-        display_order=int(request.form.get('display_order', 0))
+        display_order=int(request.form.get('display_order') or 0)
     )
     db.session.add(new_book)
     db.session.commit()
@@ -76,7 +76,7 @@ def update_book(book_id):
     
     book.price = int(request.form.get('price'))
     book.remark = request.form.get('remark')
-    book.display_order = int(request.form.get('display_order', 0))
+    book.display_order = int(request.form.get('display_order') or 0)
     
     db.session.commit()
     flash(f"已更新書籍：{book.title}")
